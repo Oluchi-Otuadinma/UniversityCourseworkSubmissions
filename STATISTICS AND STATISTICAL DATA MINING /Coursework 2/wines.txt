@@ -1,0 +1,380 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+Dataset URL: https://archive.ics.uci.edu/dataset/186/wine+quality 
+
+Title: Exploratory analysis of wines in order to predict and classify wine quality 
+
+```{r}
+# I will be conducting exploratory analysis on the wine quality dataset taken fron the UC irvine machine learning repository, this project focuses on analyzing and predicting the quality of wine based on its physicochemical properties. Two datasets, originally representing red and white wines, were combined to create a unified dataset. The dataset contains variables such as fixed_acidity, volatile_acidity, citric_acid, residual_sugar, chlorides, free_sulfur_dioxide, pH, sulphates, and alcohol, with quality as the target variable, representing wine quality
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+options(repos = c(CRAN = "https://cran.rstudio.com/"))
+
+install.packages("ggplot2")
+install.packages("plotly")
+install.packages("dplyr")
+install.packages("tinytex")
+install.packages('magrittr')
+install.packages("rmarkdown")
+install.packages("rlang")
+install.packages("caret")
+install.packages("corrplot")
+install.packages("GGally")
+install.packages("randomForest")
+
+library(ggplot2)
+library(GGally)
+library(plotly)
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(knitr)
+library(rlang)
+library(tinytex)
+library(magrittr)
+library(rmarkdown)
+library(caret)
+library(corrplot)
+library(randomForest)
+
+Data1 <- read.table("winequality-red.csv",sep=";",header=TRUE)
+Data2 <- read.table("winequality-white.csv",sep=";",header=TRUE)
+
+colSums(is.na(Data1)) 
+colSums(is.na(Data2)) 
+
+```
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+str(Data1)
+
+Data1$color <- "red"
+Data2$color <- "white"
+
+set.seed(1)
+wine <- rbind(Data1, Data2)
+wine_df <- wine[sample(1:nrow(wine)), ] 
+print(nrow(wine_df))
+summary(wine_df)
+```
+
+```{r echo=FALSE}
+aggregate(. ~ color, data = wine_df, FUN = mean)
+
+#
+# Acids 
+ggpairs(wine_df, columns = c("fixed.acidity", "volatile.acidity", "citric.acid", "color"), 
+        aes(color = color), title = "Acidity Variables")
+
+# Sulfur dioxide and sugar
+ggpairs(wine_df, columns = c("residual.sugar", "free.sulfur.dioxide", "total.sulfur.dioxide", "color"), 
+        aes(color = color), title = "Sulphur Dioxide and Sugar Variables")
+
+# Others
+ggpairs(wine_df, columns = c("density", "pH", "sulphates", "color"), 
+        aes(color = color), title = "Density, pH, and Sulphates")
+
+
+# Acids
+pairs(wine_df[, c("fixed.acidity", "volatile.acidity", "citric.acid")], main = "Acidity Variables Scatterplot Matrix")
+
+# Sulfur dioxide and sugar
+pairs(wine_df[, c("residual.sugar", "free.sulfur.dioxide", "total.sulfur.dioxide")], main = "Sulfur Dioxide and Sugar Variables Scatterplot Matrix")
+
+# Others
+pairs(wine_df[, c("density", "pH", "sulphates")], main = "Other Variables Scatterplot Matrix")
+
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+#visualise the outliers in the data
+categorical_cols <- names(wine_df)[sapply(wine_df, is.character)]
+numeric_cols <- names(wine_df)[sapply(wine_df, is.numeric)]
+
+for (col in categorical_cols) {
+  col_count1 <- wine_df %>% count(!!sym(col))
+  
+  p <- ggplot(data = col_count1, aes(x = !!sym(col), y = n)) +
+    geom_bar(stat = "identity") + 
+    ggtitle(paste("Bar Plot for", col))
+  
+  ggplotly(p) %>% print()
+}
+
+hist_list <- list()
+
+for (col in numeric_cols) {
+  p <- ggplot(wine_df, aes(x = !!sym(col))) +
+    geom_histogram(bin = 12, binwidth = 0.008, fill = "darkblue", color = "black") + 
+    ggtitle(paste("Histogram for", col))
+  
+
+  hist_list[[col]] <- p
+}
+
+hist_list[["density"]] <- ggplot(wine_df, aes(x = density)) +
+  geom_histogram(binwidth = 0.0005, fill = "darkblue", color = "black") +
+  ggtitle("Histogram for density (Adjusted Binwidth)")
+
+hist_list[["chlorides"]] <- ggplot(wine_df, aes(x = chlorides)) +
+  geom_histogram(binwidth = 0.009, fill = "darkblue", color = "black") +
+  ggtitle("Histogram for chlorides (Adjusted Binwidth)")
+
+hist_list[["residual.sugar"]] <- ggplot(wine_df, aes(x = residual.sugar)) +
+  geom_histogram(binwidth = 0.59, bins = 50,  fill = "darkblue", color = "black") +
+  ggtitle("Histogram for residual.sugar (Adjusted Binwidth)")
+
+print(hist_list) 
+```
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+#remove outliers  
+hist_list <- list()
+
+within_iqr <- function(x) {
+  lower_bound <- quantile(x, 0.25) - 1.5 * IQR(x)
+  upper_bound <- quantile(x, 0.75) + 1.5 * IQR(x)
+  x >= lower_bound & x <= upper_bound
+}
+
+wine_df_filtered <- wine_df %>%
+  filter(if_all(where(is.numeric), within_iqr))
+
+if (nrow(wine_df_filtered) == 0) {
+  stop("Filtered dataframe is empty. Adjust filtering criteria.")
+}
+
+#Show updated dataframe
+for (col in categorical_cols) {
+  count_wine_df_filtered <- wine_df_filtered %>% count(!!sym(col))
+  
+  p <- ggplot(data = count_wine_df_filtered, aes(x = !!sym(col), y = n)) +
+    geom_bar(stat = "identity", fill = "darkred") + 
+    ggtitle(paste("Bar Plot for", col, "(Filtered)"))
+  
+}
+
+for (col in numeric_cols) {
+  p <- ggplot(wine_df_filtered, aes_string(x = col)) +
+    geom_histogram(binwidth = 0.008, fill = "darkred", color = "black") + 
+    ggtitle(paste("Histogram for", col, "(Filtered)"))
+  hist_list[[col]] <- p
+}
+
+hist_list[["density"]] <- ggplot(wine_df, aes(x = density)) +
+  geom_histogram(binwidth = 0.0005, fill = "darkred", color = "black") +
+  ggtitle("Histogram for density (Adjusted Binwidth)")
+
+hist_list[["chlorides"]] <- ggplot(wine_df, aes(x = chlorides)) +
+  geom_histogram(binwidth = 0.009, fill = "darkred", color = "black") +
+  ggtitle("Histogram for chlorides (Adjusted Binwidth)")
+
+hist_list[["residual.sugar"]] <- ggplot(wine_df, aes(x = residual.sugar)) +
+  geom_histogram(binwidth = 0.59, bins = 50,  fill = "darkred", color = "black") +
+  ggtitle("Histogram for residual.sugar (Adjusted Binwidth)")
+
+print(hist_list[names(hist_list) != "quality"] ) 
+```
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+cor_matrix <- cor(wine_df_filtered[, !colnames(wine_df_filtered) %in% "color"])
+cor_matrix
+
+corrplot(cor_matrix, 
+         method = "color",             
+         order = "hclust",             
+         addCoef.col = "black",       
+         title = "Correlation Matrix", 
+         bg = "lightblue",             
+         tl.cex = 0.7,                 
+         number.cex = 0.6)  
+         
+columns_to_remove <- findCorrelation(
+  cor_matrix,
+  cutoff = 0.5,
+  verbose = FALSE,
+  names = TRUE,
+)
+
+print(columns_to_remove)
+
+wine_low_cor <- wine_df_filtered[, !(colnames(wine_df_filtered) %in% c("density", "total.sulfur.dioxide"))]
+
+```
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+set.seed(15)
+train_indices <- sample(seq_len(nrow(wine_low_cor)), size = 0.66 * nrow(wine_low_cor))
+
+train_data <- wine_low_cor[train_indices, ] 
+test_data <- wine_low_cor[-train_indices, ] 
+
+cat("Train size:", nrow(train_data), "\nTest size:", nrow(test_data))
+
+head(train_data)
+```
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+lm.fit <- lm(quality ~ ., data = train_data)
+summary(lm.fit)
+
+
+
+# Set significance level for elimination
+significance_level <- 0.05
+
+# Backward elimination loop
+while (TRUE) {
+  model_summary <- summary(lm.fit)
+  p_values <- coef(model_summary)[, "Pr(>|t|)"]
+  p_values <- p_values[-1]
+  
+  max_p_value <- max(p_values)
+  
+  if (max_p_value > significance_level) {
+    variable_to_remove <- names(p_values)[which.max(p_values)]
+  
+    updated_formula <- update(lm.fit, paste(". ~ . -", variable_to_remove))
+    
+    lm.fit <- lm(updated_formula, data = wine_low_cor)
+    
+    print(summary(lm.fit))
+  } else {
+
+    break
+  }
+}
+
+final_model <- lm.fit
+```
+```{r echo=TRUE, message=FALSE}
+confidence_int <- rbind(
+confint(final_model, 'volatile.acidity', level = 0.95),
+confint(final_model, 'citric.acid', level = 0.95),
+confint(final_model, 'residual.sugar', level = 0.95),
+confint(final_model, 'chlorides', level = 0.95),
+confint(final_model, 'free.sulfur.dioxide', level = 0.95),
+confint(final_model, 'sulphates', level = 0.95),
+confint(final_model, 'alcohol', level = 0.95),
+confint(final_model, 'colorwhite', level = 0.95)
+)
+
+print(confidence_int)
+
+final_model_df <- wine_low_cor %>% select(-fixed.acidity)
+
+pred <- setdiff(names(final_model_df), c("quality", "color"))
+
+for (col in pred) {
+  p <- ggplot(final_model_df, aes_string(x = col, y = "quality")) + 
+    geom_point() + 
+    geom_smooth(method = "lm", se = FALSE) + 
+    ggtitle(paste("Scatter plot of", col, "vs Quality"))
+  
+  print(p)
+}
+```
+```{r echo=TRUE, message=FALSE}
+predictions <- predict(final_model, newdata = test_data)
+cor(predictions, test_data$quality)^2
+rmse <- sqrt(mean((predictions - test_data$quality)^2))
+print(rmse)
+
+plot(test_data$quality, predictions, 
+     xlab = "Actual Quality", ylab = "Predicted Quality", 
+     main = "Actual vs. Predicted Quality")
+abline(0, 1, col = "red")
+
+range(test_data$quality)
+
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+set.seed(123)
+wine_low_cor$color <- as.factor(wine_low_cor$color)
+trainIndex <- createDataPartition(wine_low_cor$color, p = 0.66, list = FALSE)
+train_data <- wine_low_cor[trainIndex, ]
+test_data <- wine_low_cor[-trainIndex, ]
+
+rf_model_1 <- randomForest(color ~ fixed.acidity + volatile.acidity + citric.acid + 
+residual.sugar + chlorides + free.sulfur.dioxide + pH +
+sulphates + alcohol, data = train_data, keep.forest = TRUE)
+
+rf_model_2 <- randomForest(quality ~ fixed.acidity + volatile.acidity + citric.acid + 
+residual.sugar + chlorides + free.sulfur.dioxide + pH +
+sulphates + alcohol + color, data = train_data, keep.forest = TRUE)
+
+print(rf_model_1)
+print(rf_model_2)
+
+oob_data_1 <- data.frame(
+  Trees = 1:length(rf_model_1$err.rate[, 1]),
+  OOB_Error = rf_model_1$err.rate[, 1]
+)
+
+oob_data_2 <- data.frame(
+  Trees = 1:length(rf_model_2$err.rate[, 1]),
+  OOB_Error = rf_model_1$err.rate[, 1]
+)
+
+ggplot(oob_data_1, aes(x = Trees, y = OOB_Error)) +
+  geom_line(color = "blue") +
+  geom_point(color = "red", size = 1) +
+  labs(title = "Out-of-Bag (OOB) Error Rate vs. Number of Trees",
+       x = "Number of Trees",
+       y = "OOB Error Rate") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggplot(oob_data_2, aes(x = Trees, y = OOB_Error)) +
+  geom_line(color = "orange") +
+  geom_point(color = "black", size = 1) +
+  labs(title = "Out-of-Bag (OOB) Error Rate vs. Number of Trees",
+       x = "Number of Trees",
+       y = "OOB Error Rate") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+rf_pred_color <- predict(rf_model_1, test_data)
+confusionMatrix(factor(rf_pred_color), factor(test_data$color))
+
+
+rf_pred_quality <- predict(rf_model_2, test_data)
+```
+
+```{r message=TRUE, warning=FALSE}
+#Conclusion
+#In the linear regression model the correlation between the predicted and actual values is 0.2933, which indicates a weak positive relationship. A higher correlation (closer to 1) would mean that the model's predictions are closely aligned with the actual values. Since this value is relatively low, it suggests that the linear regression model may not be capturing the underlying relationship in the data very well.The RMSE = 0.6585 indicates that the model's predictions deviate from the actual values by approximately 0.66 units. Considering that the range of the target (quality) is only 3 units (from 4 to 7), an RMSE of 0.66 is relatively high, meaning the model’s predictions are not very accurate.The correlation of 0.2933 further confirms that the linear model explains only a small proportion of the variance in the target variable. A low correlation suggests that the relationship between the predictors and the target might not be linear or that there is significant noise in the data.
+
+#The random forest model performs exceptionally well, with an overall accuracy of about 98.85% when predicting wine colour. Though when predicting quality, it struggles to infer relationship in the data The error rate is very low for both red and white wines, but the model is slightly better at predicting white wines (lower class error).For further improvement, techniques like hyper parameter tuning or or feature importance analysis would be good additions. From this it can be derived that as stated in the research paper by (D, Angus 2019), the physio chemical properties of wine have a direct affect on the quality of the wine produced and if it can be optimised quality can be improved
+
+```
+
+```{r message=TRUE, warning=FALSE}
+# References
+#https://yihui.org/knitr/options/
+#https://www.datacamp.com/doc/r/merging
+#https://www.datacamp.com/doc/r/category/statistics
+#https://www.datacamp.com/doc/r/graphics-with-ggplot2
+#https://www.geeksforgeeks.org/how-to-create-and-interpret-pairs-plots-in-r/
+#https://www.geeksforgeeks.org/how-to-shuffle-a-dataframe-in-r-by-rows/ 
+#https://www.geeksforgeeks.org/create-interactive-ggplot2-graphs-with-plotly-in-r/
+#https://www.sthda.com/english/wiki/visualize-correlation-matrix-using-correlogram
+#https://www.rdocumentation.org/packages/corrplot/versions/0.95/topics/corrplot
+#P. Cortez, A. Cerdeira, Fernando Almeida, Telmo Matos, J. Reis, 2009, Modeling wine preferences by data mining from physicochemical properties, DOI:10.1016, https://www.semanticscholar.org/paper/Modeling-wine-preferences-by-data-mining-from-Cortez-Cerdeira/bf15a0ccc14ac1deb5cea570c870389c16be019c
+#Chao Ye, Kevin W. Li, Guozhu Jia, A new red wine prediction framework using machine learning, Journal of Physics, DOI:10.1088/1742-6596/1684/1/012067, https://www.semanticscholar.org/paper/A-new-red-wine-prediction-framework-using-machine-Ye-Li/540e308462d898905b13fe0ae4a84149d418e942
+#D. Angus, 2019, Modeling Wine Quality from Physicochemical Properties, https://www.semanticscholar.org/paper/Modeling-Wine-Quality-from-Physicochemical-Angus/f9c457828e4e26ab2ae6f0f9a4cea66c98767df6
+#https://www.rdocumentation.org/packages/car/versions/3.1-3/topics/Predict
+#https://stackoverflow.com/questions/54977780/how-to-plot-an-oob-error-vs-the-number-of-trees-in-random-forest
+#https://statisticsbyjim.com/regression/root-mean-square-error-rmse/
+#https://www.geeksforgeeks.org/how-to-calculate-the-oob-of-random-forest-in-r/
+#https://www.researchgate.net/figure/Random-Forest-plot-of-classification-error-versus-number-of-trees-incorporated-into-the_fig3_366797334
+
+```
