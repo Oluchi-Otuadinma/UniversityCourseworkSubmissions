@@ -5,7 +5,7 @@ This repository serves as a centralized archive of my academic journey through t
 
 ---
 
-## 📂 Modules
+## Modules
 
 ### Artificial Intelligence
 Exploration of deep learning architectures and generative models.
@@ -42,7 +42,7 @@ Deep Learning architectures and artificial neural optimization.
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 * **Languages:** Python, R, SQL, MatLab
 * **Deep Learning:** PyTorch, TensorFlow, Keras
 * **Data Science:** Pandas, NumPy, Scikit-Learn
@@ -50,5 +50,5 @@ Deep Learning architectures and artificial neural optimization.
 
 ---
 
-## 📜 Academic Integrity
+## Academic Integrity
 This repository is for portfolio display. All work is original unless otherwise cited. Students are encouraged to use this as a reference but must adhere to their university's plagiarism policies.
