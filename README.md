@@ -43,7 +43,7 @@ Deep Learning architectures and artificial neural optimization.
 ---
 
 ## Tech Stack
-* **Languages:** Python, R, SQL, MatLab
+* **Languages:** Python, R, SQL, MatLab, Bash
 * **Deep Learning:** PyTorch, TensorFlow, Keras
 * **Data Science:** Pandas, NumPy, Scikit-Learn
 * **Tools:** Git, Jupyter, Colab, R-Studio
