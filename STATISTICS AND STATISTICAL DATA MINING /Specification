@@ -1,0 +1,30 @@
+Statistics and Statistical Data Mining
+
+Coursework 2
+
+ 
+
+For this coursework you are required to formulate a data analysis mini-project problem of interest to you, indicating the dataset you used to build a solution for this problem. You should not have previously submitted the work in another module’s assignment. A popular source for openly available datasets is the UCI repository https://archive.ics.uci.edu/datasets but you may use also other sources of open data.
+
+Your data analysis should be conducted in R using the libraries of your choice, and applying the statistical learning methods you study in this module.
+
+Upon completing your work, you are required to submit:
+
+1)    Your R code as a text file with extension .R, which can be loaded in RStudio and executed and evaluated by the instructor. The file should start with the comment line:
+#  dataset URL
+
+2)    An HTML file produced by running your R code and that includes your code and its results. This file can be produced with R Markdown.
+
+3)    A PDF file of 15 to 20 pages, comprising the report describing and discussing your work and results. The report should have the following structure:
+
+a.     Title of your mini-project
+b.     Your name
+c.     An Abstract of up to 200 words, summarising your mini-project work and your work’s most important results and achievements.
+d.     An Introduction section, explaining the problem you tackle in your mini-project work, then discussing any other solutions already existing in the public domain or other related works which you can cite here. Then this section should informally present (and without too many technical details in this section) what solution you proposed in this work.
+e.     A Data section, describing the most important aspects of the data you used in this work.
+f.      A Methodology section explaining how you conducted your analysis, and what methods and algorithms/ techniques you applied, and in which way and order. You may include also a diagram to support your explanations.
+g.     A Results and Evaluation section presenting the results your work achieved by applying your methodology on the data, and the evaluation of the performance of your models on the test set.
+h.     A Discussion section comprising a self-evaluation of the contribution of your work to the problem at hand, and comparing your work with other previously existing works/ solutions (you may use citations for the latter) showing on which aspects your work was better, comparable, or less good than other works in the public domain.
+i.      A Conclusion section concluding your mini-project, restating your work’s main achievements, and discussing how this work could be further improved and extended if more time resource were available.   
+j.      A References section with a list of references that you cited in the above sections.
+Criteria for marking include: (a) correctness, complexity and broadness of the analysis; (b) level of performance of models; (c) novelty of analysis and methodology (comparing in the report with other works existing in the public domain, mentioning how your analysis and methodology make a difference); (d) structure and clarity of the report in particular the clear presentation of the problem at hand, of data, of methodology, of results and models' performance evaluation, (e) clear discussion of results and conclusion in the report; and (f) references and citing in the report.
